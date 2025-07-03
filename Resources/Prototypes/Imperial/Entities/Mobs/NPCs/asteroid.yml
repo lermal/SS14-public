@@ -1,0 +1,83 @@
+- type: entity
+  id: ImperialMobUrs
+  parent: [ BaseMobAsteroid, MobBloodstream ]
+  name: urs
+  description: A massive beast that uses long tentacles to ensnare its prey, threatening them is not advised under any conditions.
+  components:
+  - type: Sprite
+    sprite: Mobs/Aliens/Asteroid/goliath.rsi
+    layers:
+    - map: ["enum.DamageStateVisualLayers.Base"]
+      state: goliath
+  - type: DamageStateVisuals
+    states:
+      Alive:
+        Base: goliath
+      Dead:
+        Base: goliath_dead
+  - type: MovementSpeedModifier
+    baseWalkSpeed : 2.00
+    baseSprintSpeed : 2.00
+  - type: Bloodstream
+    bloodMaxVolume: 350
+    chemicalMaxVolume: 0
+  - type: MobThresholds
+    thresholds:
+      0: Alive
+      250: Dead
+  - type: MeleeWeapon
+    soundHit:
+      path: "/Audio/Weapons/smash.ogg"
+    angle: 0
+    attackRate: 0.75
+    animation: WeaponArcPunch
+    damage:
+      types:
+        Slash: 10
+        Piercing: 10
+  - type: NpcFactionMember
+    factions:
+    - SimpleHostile
+  - type: HTN
+    constantlyReplan: false
+    rootTask:
+      task: GoliathCompound
+    blackboard:
+      VisionRadius: !type:Single
+        6
+      AggroVisionRadius: !type:Single
+        10
+      NavSmash: !type:Bool
+        true
+  - type: NPCUseActionOnTarget
+    actionId: ActionUrsDash
+  - type: Tag
+    tags:
+    - CannotSuicide
+    - Goliath
+    - FootstepSound
+  - type: NoSlip
+  - type: ImperialDash
+    force: 1500
+  - type: Butcherable
+    spawned:
+    - id: FoodMeatGoliath
+      amount: 3
+    - id: MaterialGoliathHide1
+      amount: 3
+
+- type: entity
+  id: ActionUrsDash
+  name: "[color=red]Tentacle Slam[/color]"
+  description: Use your tentacles to grab and stun a target player!
+  components:
+  - type: EntityWorldTargetAction
+    raiseOnUser: true
+    icon:
+      sprite: Mobs/Aliens/Asteroid/goliath.rsi
+      state: goliath_tentacle_spawn
+    sound:
+      path: "/Audio/Weapons/slash.ogg"
+    event: !type:UrsDashAction
+    useDelay: 8
+    range: 6

@@ -12,8 +12,10 @@ public enum EntityLayerGroups
     None = 0,
     PhaseSpace = 1 << 0,
 
+    Dash = 1 << 10,
+
     Overworld = 1 << 31,
 
-    All = PhaseSpace,
+    All = PhaseSpace | Dash,
     AllWithOverworld = All | Overworld
 }
