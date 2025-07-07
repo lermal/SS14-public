@@ -39,6 +39,11 @@ public sealed partial class ImperialDashComponent : Component
     [DataField]
     public HashSet<BodyStatus> RequiredBodyStatus = new() { BodyStatus.OnGround };
 
+    /// <summary>
+    /// Tracking if a player has touched someone during a dash
+    /// </summary>
+    [ViewVariables(VVAccess.ReadOnly)]
+    public bool EntityTouched = false;
 
     [ViewVariables]
     public bool IsDashing = false;

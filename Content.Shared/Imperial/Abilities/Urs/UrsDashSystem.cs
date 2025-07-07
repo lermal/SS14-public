@@ -15,10 +15,9 @@ using Robust.Shared.Network;
 using Robust.Shared.Physics.Components;
 using Robust.Shared.Physics.Systems;
 using Robust.Shared.Timing;
-using Content.Shared.Mind.Components;
-using Content.Shared.Ghost;
 using Robust.Shared.Physics.Events;
 using Content.Shared.Damage.Prototypes;
+using Content.Shared.Mobs.Components;
 using Robust.Shared.Prototypes;
 
 namespace Content.Shared.Imperial.Abilities.Urs;
@@ -37,11 +36,6 @@ public sealed class UrsDashSystem : EntitySystem
     [Dependency] private readonly DamageableSystem _damageableSystem = default!;
     [Dependency] private readonly IPrototypeManager _prototypeManager = default!;
 
-    /// <summary>
-    /// Словарь для отслеживания столкновений
-    /// </summary>
-    private readonly Dictionary<EntityUid, bool> _dashCollisions = new();
-
     /// <inheritdoc/>
     public override void Initialize()
     {
@@ -59,21 +53,25 @@ public sealed class UrsDashSystem : EntitySystem
         {
             if (_timing.CurTime < component.DashEndTime)
                 continue;
+
             if (!component.IsDashing)
                 continue;
 
             component.IsDashing = false;
 
+            if (!component.EntityTouched)
+            {
+                _stun.TryStun(uid, TimeSpan.FromSeconds(10f), false);
+
+                _popup.PopupPredicted(Loc.GetString("urs-dash-stunned"), uid, uid, type: PopupType.LargeCaution);
+            }
+
+            component.EntityTouched = false;
+
             if (_net.IsClient)
                 return;
 
             RemComp<PhaseSpaceShadowComponent>(uid);
-
-            if (_dashCollisions.Count == 0)
-            {
-                _stun.TryStun(uid, TimeSpan.FromSeconds(3f), false);
-                _popup.PopupPredicted(Loc.GetString("urs-dash-no-collision-stun"), uid, uid, type: PopupType.MediumCaution);
-            }
         }
     }
 
@@ -84,7 +82,7 @@ public sealed class UrsDashSystem : EntitySystem
 
         // TODO: animation
 
-        _popup.PopupPredicted(Loc.GetString("tentacle-ability-use-popup", ("entity", args.Performer)), args.Performer, args.Performer, type: PopupType.SmallCaution);
+        _popup.PopupPredicted(Loc.GetString("urs-dash-ability-popup", ("entity", args.Performer)), args.Performer, args.Performer, type: PopupType.SmallCaution);
 
         if (_transform.GetGrid(coords) is not { } grid || !TryComp<MapGridComponent>(grid, out var gridComp))
         {
@@ -130,9 +128,13 @@ public sealed class UrsDashSystem : EntitySystem
                 if (!Exists(args.Performer))
                     return;
 
-                var targetDistance = distanceToTarget * 1.2f;
-                var requiredForce = targetDistance * physicsComponent.Mass * 20f; // Увеличиваем силу
-                var mainForce = new Vector2(requiredForce);
+                component.Force = distanceToTarget * 1020f;
+                if (component.Force > 4000)
+                {
+                    component.Force = 4000;
+                }
+
+                var mainForce = new Vector2(component.Force);
                 var mainImpulse = dashDirection * mainForce;
                 var dashTime = TimeSpan.FromSeconds(0.5f);
 
@@ -162,8 +164,6 @@ public sealed class UrsDashSystem : EntitySystem
                 component.DashButtonPressedTick = _timing.CurTick;
 
                 component.IsDashing = true;
-
-                _dashCollisions[args.Performer] = false;
             });
         }
 
@@ -198,15 +198,9 @@ public sealed class UrsDashSystem : EntitySystem
 
         var otherEntity = args.OtherEntity;
 
-        if (!TryComp<MindContainerComponent>(otherEntity, out _) ||
-            HasComp<GhostComponent>(otherEntity))
+        if (!HasComp<MobStateComponent>(otherEntity))
         {
             return;
-        }
-
-        if (_dashCollisions.ContainsKey(uid))
-        {
-            _dashCollisions[uid] = true;
         }
 
         var damage = new DamageSpecifier(_prototypeManager.Index<DamageGroupPrototype>("Brute"), 20);
@@ -216,5 +210,7 @@ public sealed class UrsDashSystem : EntitySystem
         _stun.TryStun(otherEntity, TimeSpan.FromSeconds(10f), false);
 
         _popup.PopupPredicted(Loc.GetString("urs-dash-hit-player"), otherEntity, otherEntity, type: PopupType.LargeCaution);
+
+        component.EntityTouched = true;
     }
 }
